@@ -1,0 +1,5 @@
+select ser.agreement_no from  results_st..stress_exp_result_agreement ser,
+ results_st..stress_exp_result_agreement ser1    where 
+    not exists (select 1 from results_st..stress_exp_result_agreement abc1 where abc1.agreement_no = ser.agreement_no
+    and abc1.stress_test_id <> 100)
+    and ser1.agreement_no = 100
