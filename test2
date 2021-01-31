@@ -1,0 +1,55 @@
+Create 
+--Alter 
+Procedure dbo.spUpdateDates
+As
+Begin Try
+	Declare @id as int, @index as int, @max_id as int, @tmpInt as Int, @IDT as int;
+	Declare @validFrom as Date, @validTo as Date;
+	Declare @colVar1 as VarChar(11), @colVar2 as VarChar(11);
+	declare @colInt1 as Int, @colInt2 as Int;
+	Declare @tmpDate as Date;
+	/*Remove Temporary Table If already exists*/
+	if OBJECT_ID('tempdb.dbo.#tblDemo','U') is not null drop table #Temp;
+	/*Create Temporary Table*/
+	Create Table #tblDemo
+	(
+		ID Int Identity,
+		IDT Int,
+		Business_Date Date,
+		colVar1 varchar(11),
+		colVar2 varchar(11),
+		colInt1 Int,
+		colInt2 Int,
+		ValidFrom Date,
+		ValidTo Date
+	);
+	/*Pull Data from Source to Array*/
+	Insert into #tblDemo (colVar1, colVar2, colInt1, colInt2, Business_Date)
+	Select Distinct colVar1, colVar2, colInt1, colInt2, Business_Date from dbo.tblDemo Where ValidFrom is null or ValidTo is null 
+	order by colVar1, colVar2, colInt1, colInt2, Business_Date;
+
+	/*Get Maximum Number of Rows*/
+	Set @max_id = (Select Count(*) from #tblDemo);
+	Set @id = 1;
+	while @id < @max_id
+	Begin
+		--Fetch to be updated rows only when there are nulls in dates otherwise skip
+			Select @validFrom = Business_Date, @colVar1 = colVar1, @colVar2 = colVar2, @colInt1 = colInt1, @colInt2 = colInt2 from #tblDemo 
+			Where ID = @ID;
+			Select Top 1 @validTo =  Business_Date from #tblDemo Where ID > @ID and colVar1 = @colVar1 and colVar2 = @colVar2 and colInt1 = @colInt1 and colInt2 = @colInt2 
+			order by ID;
+			if(DateDiff(Day, @validFrom, @validTo) > 0)
+			Begin
+				Update #tblDemo Set ValidFrom = @validFrom, ValidTo = @validTo Where colVar1 = @colVar1 and colVar2 = @colVar2 and colInt1 = @colInt1 and colInt2 = @colInt2
+				and Business_Date = @ValidFrom and ID >= @ID;
+			End
+		Set @id = @id + 1
+	End
+	Update d Set d.ValidFrom = t.ValidFrom, d.ValidTo = t.ValidTo from #tblDemo t Inner Join tblDemo d on 
+	t.Business_Date = d.Business_Date and t.colInt1 = d.colInt1 and t.colInt2 = d.colInt2 and t.colVar1 = d.colVar1 and t.colVar2 = d.colVar2;
+	/*Remove Temporary Table*/
+	Drop Table #tblDemo;
+End Try
+Begin Catch 
+	Select ERROR_LINE(), ERROR_MESSAGE()
+End Catch
